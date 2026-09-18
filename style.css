@@ -634,7 +634,6 @@ button { cursor: pointer; border: none; background: none; font: inherit; }
    ABOUT
    ═══════════════════════════════════════════════════════════════ */
 .about-section {
-  padding-block: var(--section-pad);
   background: var(--ivory-deep);
 }
 
@@ -675,7 +674,7 @@ button { cursor: pointer; border: none; background: none; font: inherit; }
   display: flex;
   flex-direction: column;
   justify-content: center;
-  background: var(--ivory);
+  background: #fff;
 }
 
 .about-content-panel .section-heading-large {
