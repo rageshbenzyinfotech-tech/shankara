@@ -160,17 +160,20 @@
   const lightbox = $('#lightbox');
   const lightboxImg = $('#lightbox-img');
   const lightboxCaption = $('#lightbox-caption');
+  const lightboxCounter = $('#lightbox-counter');
   const lightboxClose = $('#lightbox-close');
   const lightboxPrev = $('#lightbox-prev');
   const lightboxNext = $('#lightbox-next');
 
   let currentLbIndex = 0;
   let visibleItems = [];
+  let lastActiveElement = null;
 
   function openLightbox(index) {
     visibleItems = galleryItems.filter(i => !i.classList.contains('hidden'));
     if (!visibleItems.length) return;
 
+    lastActiveElement = document.activeElement;
     currentLbIndex = ((index % visibleItems.length) + visibleItems.length) % visibleItems.length;
     setLightboxImage(currentLbIndex);
     lightbox.classList.add('open');
@@ -183,16 +186,30 @@
     lightbox.classList.remove('open');
     lightbox.setAttribute('aria-hidden', 'true');
     document.body.style.overflow = '';
+    if (lastActiveElement && typeof lastActiveElement.focus === 'function') {
+      lastActiveElement.focus();
+    }
   }
 
   function setLightboxImage(idx) {
     const item = visibleItems[idx];
     if (!item) return;
+
     const img = $('img', item);
     const caption = $('.gallery-title', item);
-    lightboxImg.src = img.src;
-    lightboxImg.alt = img.alt;
-    lightboxCaption.textContent = caption ? caption.textContent : '';
+
+    lightboxImg.classList.add('changing');
+    setTimeout(() => {
+      lightboxImg.src = img.src;
+      lightboxImg.alt = img.alt || 'Gallery image';
+      if (lightboxCaption) {
+        lightboxCaption.textContent = caption ? caption.textContent : '';
+      }
+      if (lightboxCounter) {
+        lightboxCounter.textContent = `${idx + 1} / ${visibleItems.length}`;
+      }
+      lightboxImg.classList.remove('changing');
+    }, 120);
   }
 
   galleryItems.forEach((item, i) => {
@@ -205,16 +222,26 @@
   });
 
   lightboxClose.addEventListener('click', closeLightbox);
-  lightbox.addEventListener('click', e => { if (e.target === lightbox) closeLightbox(); });
+
+  // Close lightbox when clicking empty backdrop area
+  lightbox.addEventListener('click', e => {
+    const isControl = e.target.closest('#lightbox-close, #lightbox-prev, #lightbox-next');
+    const isImage = e.target.closest('#lightbox-img, #lightbox-caption, #lightbox-counter');
+    if (!isControl && !isImage) {
+      closeLightbox();
+    }
+  });
 
   lightboxPrev.addEventListener('click', e => {
     e.stopPropagation();
+    if (!visibleItems.length) return;
     currentLbIndex = (currentLbIndex - 1 + visibleItems.length) % visibleItems.length;
     setLightboxImage(currentLbIndex);
   });
 
   lightboxNext.addEventListener('click', e => {
     e.stopPropagation();
+    if (!visibleItems.length) return;
     currentLbIndex = (currentLbIndex + 1) % visibleItems.length;
     setLightboxImage(currentLbIndex);
   });
@@ -225,6 +252,37 @@
     if (e.key === 'ArrowLeft') lightboxPrev.click();
     if (e.key === 'ArrowRight') lightboxNext.click();
   });
+
+  // Touch Swipe Handling for Mobile
+  let touchStartX = 0;
+  let touchStartY = 0;
+
+  lightbox.addEventListener('touchstart', e => {
+    if (!lightbox.classList.contains('open')) return;
+    touchStartX = e.changedTouches[0].screenX;
+    touchStartY = e.changedTouches[0].screenY;
+  }, { passive: true });
+
+  lightbox.addEventListener('touchend', e => {
+    if (!lightbox.classList.contains('open')) return;
+    const touchEndX = e.changedTouches[0].screenX;
+    const touchEndY = e.changedTouches[0].screenY;
+    const diffX = touchEndX - touchStartX;
+    const diffY = touchEndY - touchStartY;
+
+    // Horizontal swipe (prev/next)
+    if (Math.abs(diffX) > 40 && Math.abs(diffX) > Math.abs(diffY)) {
+      if (diffX < 0) {
+        lightboxNext.click();
+      } else {
+        lightboxPrev.click();
+      }
+    }
+    // Vertical swipe down to close
+    else if (diffY > 90 && Math.abs(diffY) > Math.abs(diffX)) {
+      closeLightbox();
+    }
+  }, { passive: true });
 
   /* ═══════════════════════════════════════════════════════════════
      6. TESTIMONIALS SLIDER
